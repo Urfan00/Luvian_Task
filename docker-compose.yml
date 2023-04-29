@@ -1,0 +1,51 @@
+# Use postgres/example user/password credentials
+version: '3.9'
+
+services:
+
+  nginx:
+      build: ./nginx
+      ports:
+        - 80:80
+      depends_on:
+        - web
+      volumes:
+        - ./static/:/app/static/
+        - ./media/:/app/media/
+
+  db:
+    image: postgres
+    restart: always
+    volumes:
+      - ./pgdb:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    env_file: .env
+
+  redis:
+    image: redis
+    ports:
+      - 6379:6379
+
+  web:
+    build: .
+    command: gunicorn TaskProje.wsgi:application --bind 0.0.0.0:8000
+    volumes:
+      - ./media:/app/media
+    ports:
+      - 8000:8000
+    depends_on:
+      - db
+    env_file: .env
+
+  celery:
+    build:
+      context: .
+      dockerfile: celery.dockerfile
+    command: celery -A TaskProje worker -l info
+    volumes:
+      - ./media:/app/media
+    depends_on:
+      - db
+      - redis
+    env_file: .env

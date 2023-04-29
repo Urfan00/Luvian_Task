@@ -1,0 +1,166 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Products List</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-KK94CHFLLe+nY2dmCWGMq91rCGa5gtU4mk92HdvYe+M/SXH301p5ILy+dN9+nJOZ" crossorigin="anonymous" />
+    </head>
+    <style>
+        ::placeholder{
+            color:white!important;
+        }
+    </style>
+    <body style="background-image: url({% static 'image/bg1.jpg' %});">
+        <div class="container">
+            <div class="position-relative">
+                <p id="successbasket" class="bg-success rounded-pill mt-2 p-2 text-white position-fixed top-0 end-50 z-1 d-none">Successfully add to basket</p>
+                <p id="unsuccessbasket" class="bg-danger rounded-pill mt-2 p-2 text-white position-fixed top-0 end-50 z-1 d-none">Not added to cart</p>
+            </div>
+            <nav class="navbar navbar-expand-lg navbar-dark shadow-5-strong mb-3">
+                <div class="container-fluid">
+                    <a class="navbar-brand" href="{% url 'index' %}">Home-Page</a>
+                    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                            <li class="nav-item">
+                                <a class="nav-link" aria-current="page" href="{% url 'product_list' %}">Products</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'basket' %}">Basket</a>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                Accounts
+                            </a>
+                            <ul class="dropdown-menu">
+                                {% if user.is_authenticated %}
+                                    <li><a class="dropdown-item" href="{% url 'logout' %}">Log out</a></li>
+                                {% else %}
+                                    <li><a class="dropdown-item" href="{% url 'login_page' %}">Log in</a></li>
+                                    <li><a class="dropdown-item" href="{% url 'register_page' %}">Register</a></li>
+                                {% endif %}
+                            </ul>
+                        </li>
+                    </ul>
+                    <form class="d-flex" role="search">
+                        <input class="text-white bg-transparent form-control me-2" name="search" type="search" placeholder="Search Product" aria-label="Search">
+                        <button class="btn btn-outline-success" type="submit" >Search</button>
+                    </form>
+                </div>
+            </div>
+          </nav>
+            <div class="container mb-5 justify-content-center d-flex">
+                {% csrf_token %}
+                <form method="GET">
+                    <div class="row">
+                        <div class="col-4">
+                            <label class="visually-hidden" for="autoSizingSelect">Preference</label>
+                            <select class="form-select" id="category" name="category">
+                                <option value="" selected>Choose Category</option>
+                                {% for category in categories %}
+                                    <option value="{{category.id}}" {% if filter_dict.category_id == category.id %}selected{% endif %}>{{category.name}}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-3">
+                            <input type="number" class="form-control" id="min_price" name="min_price" {% if filter_dict.min_price %}value="{{filter_dict.min_price}}"{% endif %} placeholder="min price" aria-label="min price">
+                        </div>
+                        <div class="col-3">
+                            <input type="number" class="form-control" id="max_price" name="max_price" {% if filter_dict.max_price %}value="{{filter_dict.max_price}}"{% endif %} placeholder="max price" aria-label="max price">
+                        </div>
+                        <div class="col">
+                            <button type="submit" class="btn btn-primary">Filter</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="row justify-content-center">
+                {% for product in products %}
+                    <div class="card mx-2 my-2" style="max-width: 250px;">
+                        <div class="position-relative">
+                            <img  style="max-height: 250px;object-fit:contain;" src="{{ product.p_image.url }}" class="card-img-top" alt="{{ product.title }}" >
+                            {% if product.in_sale %}
+                                <span style="top:10px;right:10px;" class="position-absolute badge badge-pill text-bg-secondary">{{ product.discount }} %<br/> OFF</span>
+                            {% endif %}
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title">{{ product.title }}</h5>
+                            <p class="card-text">{{ product.description }}</p>
+                            <div class="d-flex justify-content-around">
+                                {% if product.in_sale %}
+                                    <h4 class="mb-1 me-1">{{ product.new_price|floatformat:2 }} AZN</h4>
+                                    <span class="text-danger"><s>{{ product.price|floatformat:2 }} AZN</s></span>
+                                {% else %}
+                                    <h4 class="mb-1 me-1">{{ product.price|floatformat:2 }} AZN</h4>
+                                {% endif %}
+                            </div>
+                            <a onclick="addToCart('{{product.id}}')" class="btn btn-primary">Add To Cart</a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            <nav class="mt-2 d-flex justify-content-center" aria-label="Page navigation example">
+                <ul class="pagination">
+                    {% if products.has_previous %}
+                        <li class="page-item"><a class="page-link" href="?page={{ products.previous_page_number }}&{% for key, val in filter_dict.items %}{{key}}={{val}}&{% endfor %}">Previous</a></li>
+                    {% endif %}
+                    {% if products.number|add:'-2' > 1 %}
+                        <li><a href="?page={{ products.number|add:'-3' }}&{% for key, val in filter_dict.items %}{{key}}={{val}}&{% endfor %}">&hellip;</a></li>
+                    {% endif %}
+                    {% for i in products.paginator.page_range %}
+                        {% if products.number == i %}
+                            <li class="page-item active"><a class="page-link" href="?page={{ i }}&{% for key, val in filter_dict.items %}{{key}}={{val}}&{% endfor %}">{{ i }}</a></li>
+                        {% elif i > products.number|add:'-3' and i < products.number|add:'3' %}
+                            <li class="page-item"><a class="page-link" href="?page={{ i }}{% if search %}&search={{ search }}{% endif %}&{% for key, val in filter_dict.items %}{{key}}={{val}}&{% endfor %}">{{ i }}</a></li>
+                        {% endif %}
+                    {% endfor %}
+                    {% if products.paginator.num_pages > products.number|add:'4' %}
+                        <li><a href="?page={{ products.number|add:'3' }}&{% for key, val in filter_dict.items %}{{key}}={{val}}&{% endfor %}">&hellip;</a></li>
+                    {% endif %}
+                    {% if products.has_next %}
+                        <li class="page-item"><a class="page-link" href="?page={{ products.next_page_number }}&{% for key, val in filter_dict.items %}{{key}}={{val}}&{% endfor %}">Next</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+
+        <script>
+            const basket_url = "{% url 'add_basket' %}"
+
+            function addToCart(id) {
+
+                let postdata = {
+                    "product_id" : id
+                }
+
+                $.ajax({
+                    url: basket_url,
+                    type: "POST",
+                    dataType: "json",
+                    data: postdata,
+                    headers: {
+                    "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value
+                    },
+                    success: (data) => {
+                        document.getElementById('successbasket').classList.remove('d-none')
+                        setTimeout(() => {
+                            document.getElementById('successbasket').classList.add('d-none')
+                        }, 1000);
+                    },
+                    error: (error) => {
+                        document.getElementById('unsuccessbasket').classList.remove('d-none')
+                        setTimeout(() => {
+                            document.getElementById('unsuccessbasket').classList.add('d-none')
+                        }, 1000);
+                    }
+                });
+            }
+
+        </script>
+
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ENjdO4Dr2bkBIFxQpeoTz1HIcje39Wm4jDKdf19U8gI4ddQ3GYNS7NTKfAdVQSZe" crossorigin="anonymous"></script>
+    </body>
+</html>

@@ -51,7 +51,7 @@ login_form.addEventListener('submit', (e) => {
             localStorage.setItem('refresh_token', refresh_token);
 
             // Redirect the user to the homepage
-            window.location.href = 'http://localhost:8000/';
+            window.location.href = 'http://localhost/';
 
         })
 });
